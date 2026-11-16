@@ -65,7 +65,7 @@ Few-shot generation of defect and anomaly images has been studied with GANs [19]
   <img src="figures/fig02_design_light.png" alt="Design flow: dataset, split fixed first, one generator per chain, paste controls, the class-3 training sets, three classifiers, settings chosen on validation data and measurement on the test set">
 </picture>
 
-<sub>Figure 2. Design overview. The split is fixed first (step 2); generators and paste controls come after it (steps 3 and 4); the training sets differ only in what is added to class 3 (step 5). In the final test the validation set was used only to choose the number and weight of synthetic images (it had served other design decisions earlier; see disclosure 3 in DETAILS.md); the final test was run once (step 7).</sub>
+<sub>Figure 2. Design overview. The split is fixed first; generators and paste controls come after it; the training sets differ only in what is added to class 3. Settings are chosen on validation data, and the final test is run once.</sub>
 
 In five steps:
 
@@ -79,6 +79,11 @@ In five steps:
 
 The dataset is Carinthia-S [1] (wafer SEM images, CC BY 4.0). Classes have numbers only, no official names; "particles" for class 3 is my own description. Every image is cut to a 128 × 128 crop centred on the defect; the reason is under [Why 128 px crops](#why-128-px-crops).
 
+Three classes are used: class 3 (4,008 images), class 4 (289) and good (226). Scarcity is simulated on the large class 3: training gets only n of its images, and validation and test images are held out from the rest. The split was fixed before any generated image existed, and the test list is locked by sha256.
+
+<details>
+<summary>Dataset, split and chains</summary>
+
 Only the three classes with enough images and ground truth are used: class 3 (4,008 images), class 4 (289; 288 are used, one validation image was dropped as a duplicate photo) and good (226). The classifier has 3 classes. Scarcity is simulated on the large class 3: training gets n images, and validation and test images are held out from the remainder.
 
 | Class | Training | Validation (only to choose settings and to apply the stop rule) | Test |
@@ -91,6 +96,8 @@ Only the three classes with enough images and ground truth are used: class 3 (4,
 - **The split was fixed before any round-2 generated image existed**, and the test list is locked by sha256. Validation and test images never enter training or generation, and test images never enter the choice of settings; a script checks this before every training run and every upload.
 - Metrics are per-class recall and their mean (balanced accuracy); overall accuracy is not reported.
 
+</details>
+
 ### Training sets
 
 | Set | Class-3 training data |
@@ -101,29 +108,36 @@ Only the three classes with enough images and ground truth are used: class 3 (4,
 | P_rot | As P, but the pixels are rotated. This is the paste version first registered, later moved to an exploratory control (disclosure 6 in DETAILS.md) |
 | P_box | As P, but cut together with 24 px of real surround outside the mask's bounding box (it carries the shading next to the defect and the bright square; real pixels only, nothing drawn) |
 
-The paste sets separate two things: "the same defects appear on more backgrounds" and "images produced by a generator". G, P, P_rot and P_box use the same number of images, cycle through the backgrounds in the same order, and have the same distributions of scale and position. The starred G\*, P\*, P_rot\* are the versions whose number of images (10 to 400) and weight (1 : 1 or 2 : 1) were chosen per chain on validation data; unstarred sets use the fixed setting (200 images, 1 : 1).
+The paste sets separate two things: "the same defects appear on more backgrounds" and "images produced by a generator". G, P, P_rot and P_box use the same number of images, cycle through the backgrounds in the same order, and have the same distributions of scale and position. A star (G\*, P\*, P_rot\*) marks the versions whose number of images (10 to 400) and weight (1 : 1 or 2 : 1) were chosen per chain on validation data; without a star the setting is fixed (200 images, 1 : 1).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/fig03_arms_dark.png">
   <img src="figures/fig03_arms_light.png" width="720" alt="The 4 real class-3 images of chain s0 at n = 4, and pasted, rotated-paste and generated images made from them, all as 128 px crops">
 </picture>
 
-<sub>Figure 3. Chain s0, n = 4: the 4 real training images (top row) and the first 4 pasted, rotated-paste and generated images made from them. Each column starts from the same real defect; the generated row reuses only that defect's mask shape (scaled and rotated); its pixels are newly generated. Images: Carinthia-S (CC BY 4.0), cropped; rows 2 to 4 are derived images in which the defect is pasted or generated onto good images of the same dataset. Training images only; no validation or test image is shown.</sub>
+<sub>Figure 3. Chain s0, 4 real images: the real training images (top row) and the first 4 pasted, rotated-paste and generated images made from them. Each column starts from the same real defect; the generated row reuses only its mask shape, and its pixels are newly generated. Images: Carinthia-S (CC BY 4.0), cropped; rows 2 to 4 are derived images. Training images only.</sub>
 
 ### Generators
 
-- Code: the public [NVIDIA/cdf-anomalygen](https://github.com/NVIDIA/cdf-anomalygen/tree/v1.0.0) **v1.0.0** (commit `fcad44cd`) [5].
+One generator is fine-tuned for each chain and each n, 6 in total, with the public [NVIDIA/cdf-anomalygen](https://github.com/NVIDIA/cdf-anomalygen/tree/v1.0.0) v1.0.0 [5] on Cosmos-Predict2-2B-Text2Image [4, 6]. Each generator sees only its own n real class-3 images and the 50 good training images, and produces 400 images. Only class 3 is generated.
+
+<details>
+<summary>Generator details</summary>
+
+- Code: NVIDIA/cdf-anomalygen **v1.0.0** (commit `fcad44cd`) [5].
 - One generator is fine-tuned per (n, chain), 6 in total. Each sees only the n class-3 images of its chain and the 50 good training images; the 10 images at n = 10 include the 4 of the same chain at n = 4.
 - The model is Cosmos-Predict2-2B-Text2Image [4, 6], fine-tuned few-shot through the AnomalyGen pipeline, which follows AnomalyDiffusion [2] (backbone frozen, only the added components trained), for a fixed 12,000 steps.
 - Each generator produces 400 images: the 50 backgrounds are used in turn, and masks are the annotation masks of the n images, scaled (0.6 to 1.2), rotated and shifted, placed within ±60 px of the image centre.
 - Only class 3 is generated; class 4 is real images throughout.
+
+</details>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/fig04_generated_dark.png">
   <img src="figures/fig04_generated_light.png" width="720" alt="One row per generator: on the left the first 4 real training images of that chain, on the right the first 6 class-3 images the generator produced, all as 128 px crops">
 </picture>
 
-<sub>Figure 4. One row per generator (step 12,000): on the left the first 4 real training images of that chain, on the right the generator's first 6 images, 128 px crops. In the n = 4 rows the left side shows all 4 class-3 images the generator saw; the n = 10 rows show the first 4 of its 10 images. The right side shows derived images: defects generated onto good training images of Carinthia-S (CC BY 4.0). No validation or test image is shown.</sub>
+<sub>Figure 4. One row per generator: on the left the first 4 real training images of that chain, on the right the generator's first 6 images, as 128 px crops. Images: Carinthia-S (CC BY 4.0), cropped; the right side shows derived images, generated onto good training images. No validation or test image is shown.</sub>
 
 ### Why 128 px crops
 
@@ -134,7 +148,10 @@ The first-round design used whole images. I measured the background brightness a
   <img src="figures/fig05_why_crop_light.png" alt="A class-3 training image with the 128 px crop marked and a good training image, each with the mean grey level of every row; on the right, class-3 recall for four inputs: whole image with the defect visible 0.880 and hidden 0.780, 128 px crop with the defect visible 0.860 and hidden 0.150">
 </picture>
 
-<sub>Figure 5. Left: a class-3 training image (white frame: the 128 px crop) and a good training image; the curve beside each is the mean grey level of the background in every row. The shading runs in opposite directions. Right: the design-stage diagnosis; in each pair the upper, solid bar is the input with the defect visible, the lower, faded bar the input without it. Images: Carinthia-S (CC BY 4.0), training images only.</sub>
+<sub>Figure 5. Left: a class-3 and a good training image with the mean grey level of every row; the shading runs in opposite directions. White frame: the 128 px crop. Right: class-3 recall with the defect visible (solid) and hidden (faded). Images: Carinthia-S (CC BY 4.0), training images only.</sub>
+
+<details>
+<summary>Values of the design-stage diagnosis</summary>
 
 The diagnosis used the same classifier (DINOv2-L + logistic regression, 4 real class-3 images, no generated images) on the first-round split. It is a design-stage diagnosis, not a result of this study:
 
@@ -145,9 +162,16 @@ The diagnosis used the same classifier (DINOv2-L + logistic regression, 4 real c
 | 128 × 128 crop centred on the defect | 0.860 |
 | Background patch of the same size without a defect | 0.150 |
 
+</details>
+
 A generated defect is always drawn on a good background, so its background carries the shading of good images, the opposite of real class 3. On whole images, generated images would fight this cue, and one could not see whether they help in themselves. Round 2 therefore defines the task on 128 × 128 crops centred on the defect: scores on real images barely change and the background cue is much weaker. This also matches the real ADC input: the position comes from the inspection tool and the classifier looks at the surroundings of the defect.
 
 ### Classifiers
+
+The primary classifier is a frozen DINOv2-L [3] with logistic regression [11] on top: its features are not trained, and the result is deterministic. Two smaller CNNs, ResNet-18 [7] and ConvNeXt-T [8], are fine-tuned as a secondary analysis.
+
+<details>
+<summary>Classifier settings</summary>
 
 | Classifier | Method |
 |---|---|
@@ -155,6 +179,8 @@ A generated defect is always drawn on a good background, so its background carri
 | ResNet-18, ConvNeXt-T (secondary) | Fine-tuned with AdamW [12] from pre-trained timm [9] weights (ResNet-18 [7], ConvNeXt-T [8]; see "Licences and credits") for 3,000 steps; 6 seeds for n = 4 with 200 images, 3 seeds for g = 50 and for n = 10 |
 
 The three classes have equal total weight; within class 3, real and synthetic images share the weight in the chosen ratio.
+
+</details>
 
 <details>
 <summary>Glossary</summary>
@@ -185,7 +211,7 @@ The three classes have equal total weight; within class 3, real and synthetic im
   <img src="figures/fig06_forest_light.png" alt="Differences in class-3 recall of DINOv2 with 95% intervals: G* minus R, G* minus P*, G* minus P_rot*, each at n = 4 and n = 10">
 </picture>
 
-<sub>Figure 6. Differences in class-3 recall of DINOv2-L + logistic regression with 95% intervals. Solid line: 0; dashed line: the pre-set margin of 0.02. Filled diamonds are comparisons with a hypothesis test, open diamonds have no verdict or are exploratory; small circles are the differences of the 3 chains. "Supported" requires a mean difference ≥ 0.02 and a passed hypothesis test against 0 (and, for the primary hypothesis, the guardrail); it does not require the whole interval to lie above 0.02.</sub>
+<sub>Figure 6. Differences in class-3 recall with 95% intervals. Solid line: no difference; dashed line: the pre-set margin of 0.02. Filled diamonds carry a hypothesis test; open diamonds have no verdict. Small circles are the 3 chains. "Supported" needs a mean difference ≥ 0.02 and a passed test against 0 (plus the guardrail for the primary hypothesis); the whole interval need not lie above 0.02.</sub>
 
 ### All pre-set comparisons
 
@@ -199,11 +225,16 @@ The three classes have equal total weight; within class 3, real and synthetic im
 | Secondary S1 | ResNet-18, n = 4, G − R | +0.127 [+0.071, +0.189] | −0.018 / 0.000 | supported |
 | Secondary S1 | ConvNeXt-T, n = 4, G − R | +0.136 [+0.061, +0.212] | −0.041 / 0.000 | **not supported (guardrail failed)** |
 
-Notes on the table:
+A star (G\*, P\*, P_rot\*) means the number and weight of added images were chosen per chain on validation data; without a star the setting is fixed (200 images, 1 : 1).
+
+<details>
+<summary>Notes on the table</summary>
 
 - Codes: R = real images only; G = plus generated images; P = plus pasted copies; P_rot = plus rotated pasted copies. A star (G\*, P\*, P_rot\*) means the number and weight of added images were chosen per chain on validation data; without a star the setting is fixed (200 images, 1 : 1). This is why the primary row (G\*, +0.039) and the first secondary row (G, +0.040) differ slightly.
 - Intervals are 95% bootstrap intervals; for the secondary rows they are taken over only 3 chains and under-cover. For the secondary rows, "supported" means the 3 chains agree in direction. ResNet-18 passes the guardrail on the mean, but 1 chain is beyond the limit on its own.
 - The chain-level t interval (2 degrees of freedom) excludes 0 for H1 ([+0.005, +0.072]); for H2 and all three S1 rows it still includes 0. Differences are computed before rounding, so they can differ from the rounded recalls by 0.001.
+
+</details>
 
 <details>
 <summary>Values per chain (DINOv2, class-3 recall on the 300 held-out test images)</summary>
@@ -288,6 +319,20 @@ Questions or corrections are welcome as a [GitHub issue](https://github.com/Howa
 
 ## Files and reproduction
 
+Every number and every chart on these pages is produced from the files in `results/` by the two scripts below.
+
+```
+python scripts/make_figures.py
+python scripts/stats_table.py
+```
+
+Requires Python 3.10 or later with numpy [21], matplotlib [22] and Pillow (`pip install -r requirements.txt`). Figures 3, 4 and 5 are image panels that need the dataset and the generated images, which this repository does not contain, so they are not redrawn by default; with those files at hand they are drawn with `--private-root DIR --generated-dir SUB --test-dir SUB` (see `python scripts/make_figures.py --help`).
+
+Not in this repository: dataset images and generated images (apart from the training images, pasted images and generated images shown in figures 3, 4 and 5; figure 5 shows two whole training images, the others are crops), validation and test images, model weights, per-image predictions.
+
+<details>
+<summary>What each file contains</summary>
+
 | Path | Contents |
 |---|---|
 | `results/v2_stats.json` | Statistics of the final test. Every test-set statistic on these pages comes from this file; values per chain come from `per_chain_recall.json` |
@@ -301,14 +346,7 @@ Questions or corrections are welcome as a [GitHub issue](https://github.com/Howa
 | `LICENSE`, `LICENSE-docs.md` | Licences: code MIT; text, figures and results CC BY 4.0 |
 | `CITATION.cff` | How to cite this repository |
 
-```
-python scripts/make_figures.py
-python scripts/stats_table.py
-```
-
-Requires Python 3.10 or later with numpy [21], matplotlib [22] and Pillow (`pip install -r requirements.txt`). Figures 3, 4 and 5 are image panels that need the dataset and the generated images, which this repository does not contain, so they are not redrawn by default; with those files at hand they are drawn with `--private-root DIR --generated-dir SUB --test-dir SUB` (see `python scripts/make_figures.py --help`).
-
-Not in this repository: dataset images and generated images (apart from the training images, pasted images and generated images shown in figures 3, 4 and 5; figure 5 shows two whole training images, the others are crops), validation and test images, model weights, per-image predictions.
+</details>
 
 <details>
 <summary>Keys in the JSON files</summary>
@@ -320,14 +358,20 @@ Verdict labels were translated to English; the numbers are those of the original
 ## Licences and credits
 
 - **Dataset [1].** Carinthia-S by Corinna Kofler (KAI GmbH) and Vahidin Hasić (University of Sarajevo), Zenodo, 2025, https://doi.org/10.5281/zenodo.16895427, licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); an enhanced version of the original Carinthia dataset (Kofler et al., version 1.0.3, Zenodo, 2024, https://doi.org/10.5281/zenodo.10696644), which this project did not use directly. Changes made here: 4 px trimmed on the right, masks binarised, 128 × 128 crops centred on the defect; good images used as backgrounds for pasting and generation. The images in figures 3, 4 and 5 are cropped from or derived from this dataset, are shared under CC BY 4.0, and credit the source.
-- **Generator code.** NVIDIA/cdf-anomalygen v1.0.0 (commit `fcad44cd`) [5], titled "PAIDF AnomalyGen" in that version's README and "Cosmos AnomalyGen" in its NOTICE; its LICENSE, NOTICE and the SPDX tags of its source files are Apache-2.0. The README of that version ends with one sentence naming the NVIDIA Software and Model Evaluation License, which does not agree with the LICENSE file; this project uses the code under the LICENSE file. This is not legal advice.
 - **Generator model.** Cosmos-Predict2-2B-Text2Image (NVIDIA Open Model License, https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/), fine-tuned through the AnomalyGen pipeline. The configuration used also loads the T5-large text encoder [25] (Apache-2.0) and initialises its mask encoder from NVIDIA NV-DINOv2 (NVIDIA TAO; NVIDIA Open Model License). Built on NVIDIA Cosmos [4, 6].
+- This is a personal project, not affiliated with or endorsed by NVIDIA or the dataset authors.
+- **This repository.** Code (`scripts/`) under MIT (see `LICENSE`); text, figures and result files under CC BY 4.0 (see `LICENSE-docs.md`). Figures 3, 4 and 5 also require credit to Carinthia-S.
+
+<details>
+<summary>Code, models and software used</summary>
+
+- **Generator code.** NVIDIA/cdf-anomalygen v1.0.0 (commit `fcad44cd`) [5], titled "PAIDF AnomalyGen" in that version's README and "Cosmos AnomalyGen" in its NOTICE; its LICENSE, NOTICE and the SPDX tags of its source files are Apache-2.0. The README of that version ends with one sentence naming the NVIDIA Software and Model Evaluation License, which does not agree with the LICENSE file; this project uses the code under the LICENSE file. This is not legal advice.
 - **Method.** The AnomalyGen pipeline follows AnomalyDiffusion (Hu et al., AAAI 2024) [2].
 - **Feature model.** DINOv2 ViT-L/14 [3], checkpoint facebook/dinov2-large (Apache-2.0), loaded with Hugging Face Transformers [20]. ResNet-18 [7] and ConvNeXt-T [8] start from timm [9] weights (Apache-2.0): resnet18.a1_in1k (ImageNet-1k [10], training recipe of [24]) and convnext_tiny.in12k_ft_in1k (pre-trained on ImageNet-12k, a subset of the full ImageNet [10], then fine-tuned on ImageNet-1k).
 - **Software.** PyTorch 2.10 [13], timm 1.0.27 [9], Transformers 4.57 [20], scikit-learn 1.7 [11] (logistic regression), SciPy 1.15 [16] (t intervals), NumPy 2.2 [21], Matplotlib 3.10 [22] and Pillow 12.2 (figures); the CNNs are fine-tuned with AdamW [12]. Bootstrap intervals and the Holm procedure are implemented in this project's own code following [14, 15].
 - **Compute.** Generators were fine-tuned and images generated on an NVIDIA A100 on NVIDIA Brev; classifiers were trained and evaluated on a laptop RTX 3080 Ti.
-- This is a personal project, not affiliated with or endorsed by NVIDIA or the dataset authors.
-- **This repository.** Code (`scripts/`) under MIT (see `LICENSE`); text, figures and result files under CC BY 4.0 (see `LICENSE-docs.md`). Figures 3, 4 and 5 also require credit to Carinthia-S.
+
+</details>
 
 ## References
 

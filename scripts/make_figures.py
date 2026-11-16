@@ -85,9 +85,13 @@ def style(t):
     })
 
 
-def head(fig, t, title, sub):
-    """Title and subtitle, wrapped to the figure width; spacing in inches so it does not grow with the height."""
+def head(fig, t, title, sub, tier=None):
+    """Title and subtitle, wrapped to the figure width; spacing in inches so it does not grow with the height.
+    tier: evidence level of the figure, shown as a small tag at the top right."""
     h = fig.get_figheight()
+    if tier:
+        fig.text(0.98, 1 - 0.22 / h, tier, fontsize=8.6, fontweight="bold", color=t["fg2"], va="top", ha="right",
+                 bbox=dict(boxstyle="round,pad=0.35", facecolor=t["bg"], edgecolor=t["fg2"], linewidth=0.9))
     title = textwrap.fill(title, 74)
     sub = textwrap.fill(sub, 116)
     y = 1 - 0.20 / h
@@ -203,7 +207,8 @@ def fig00(S, t, mode):
     head(fig, t, f"With 4 real images of a defect class, generated images cut class-3 errors from {err['R']} to "
                  f"{err['G*']}",
          f"DINOv2 + logistic regression. {per_chain} held-out test images × 3 sets of 4 real images. Pre-registered "
-         "comparison against real images only and against plain paste; rotated paste is exploratory.")
+         "comparison against real images only and against plain paste; rotated paste is exploratory.",
+         tier="PRE-REGISTERED")
     save(fig, "fig00_hero", mode)
 
 
@@ -214,7 +219,7 @@ def fig01(S, t, mode):
     doc = check_per_chain(S)
     fig = plt.figure(figsize=(W, 5.6))
     panels = [("n4", "n = 4 real images: pre-registered hypothesis test"),
-              ("n10", "n = 10 real images: described only")]
+              ("n10", "n = 10 real images: no verdict")]
     for i, (n, name) in enumerate(panels):
         ax = fig.add_axes([0.085 + i * 0.49, 0.215, 0.385, 0.42])
         r, g = doc["primary"][n]["R"], doc["primary"][n]["G*"]
@@ -246,7 +251,7 @@ def fig01(S, t, mode):
         if i == 0:
             ax.set_ylabel("Class-3 recall (300 held-out test images)")
         verdict = ("supported (single hypothesis test; guardrails passed)" if x["final"] == "supported"
-                   else f"{x['final']} (set in advance)")
+                   else "no verdict (set in advance)")
         ax.text(0, 1.215, name, transform=ax.transAxes, fontsize=11, fontweight="bold", color=t["fg"], va="bottom")
         ax.text(0, 1.045, f"mean {x['recB']:.3f} → {x['recA']:.3f}:  {sgn(x['delta'])}  "
                 f"[{sgn(x['lo'])}, {sgn(x['hi'])}]\n{verdict}", transform=ax.transAxes, fontsize=9.8, color=t["fg"],
@@ -255,7 +260,8 @@ def fig01(S, t, mode):
     head(fig, t, f"With 4 real images of the scarce class, class-3 recall rose from {p['recB']:.3f} to "
                  f"{p['recA']:.3f} after generated images were added",
          "DINOv2-L + logistic regression. One line per chain (s0, s1, s2); thick bars: mean. Square brackets: 95% "
-         "interval of the difference. G*: number and weight of generated images chosen on validation data.")
+         "interval of the difference. G*: number and weight of generated images chosen on validation data.",
+         tier="PRE-REGISTERED")
     foot(fig, t, "Supported = mean difference ≥ +0.02, the hypothesis test against 0 passes, and class-4 and good recall do not "
                  "drop by more than 0.02 (rules set in advance). Source: results/per_chain_recall.json, "
                  "results/v2_stats.json.")
@@ -266,10 +272,10 @@ def fig01(S, t, mode):
 
 def fig02(t, mode):
     """Design overview: what is fixed first, what each arm trains on, what is measured."""
-    fig = plt.figure(figsize=(W, 5.6))
-    ax = fig.add_axes([0.02, 0.02, 0.96, 0.80])
+    fig = plt.figure(figsize=(W, 4.65))
+    ax = fig.add_axes([0.02, 0.02, 0.96, 0.778])
     ax.set_xlim(0, 12)
-    ax.set_ylim(0, 5.2)
+    ax.set_ylim(0, 4.2)
     ax.axis("off")
 
     def box(x, y, w, h, title, body, col):
@@ -286,30 +292,30 @@ def fig02(t, mode):
     d = design()
     di, sp, ge = d["dataset_images"], d["split"], d["generation"]
     trio = lambda x: " / ".join(f"{x[c]:,}" for c in ("class 3", "class 4", "good"))  # noqa: E731
-    box(0.05, 2.95, 2.75, 2.2, "1  Dataset", f"Carinthia-S wafer SEM\nclass 3: {di['class 3']:,} images\n"
+    box(0.05, 2.4, 2.75, 1.7, "1  Dataset", f"Carinthia-S wafer SEM\nclass 3: {di['class 3']:,} images\n"
         f"class 4: {di['class 4']:,}, good: {di['good']:,}\n128 px crops on the defect", g)
-    box(0.05, 0.15, 2.75, 2.4, "2  Split, fixed first", f"class 3: {sp['chains']} disjoint chains\n"
+    box(0.05, 0.1, 2.75, 1.95, "2  Split, fixed first", f"class 3: {sp['chains']} disjoint chains\n"
         f"of n = {sp['chain_sizes'][0]} … {sp['chain_sizes'][1]} train images\n"
         f"class 4, good: {sp['train']['class 4']} train each\nvalidation {trio(sp['validation'])}\n"
         f"test {trio(sp['test'])} (locked)", g)
-    box(3.15, 2.95, 2.75, 2.2, "3  Generator (cloud)", f"one per (n, chain): {ge['generators']}\n"
+    box(3.15, 2.4, 2.75, 1.7, "3  Generator (cloud)", f"one per (n, chain): {ge['generators']}\n"
         f"sees n real class-3 images\n+ {ge['backgrounds']} good backgrounds\n"
         f"{ge['steps']:,} steps → {ge['images_per_generator']} images", t["gen"])
-    box(3.15, 0.15, 2.75, 2.4, "4  Paste controls", f"same n defects, cut out,\npasted on the same {ge['backgrounds']}\n"
+    box(3.15, 0.1, 2.75, 1.95, "4  Paste controls", f"same n defects, cut out,\npasted on the same {ge['backgrounds']}\n"
         "backgrounds: P, P_box\n(+ real surround), P_rot\n(pixels rotated)", t["paste"])
-    box(6.25, 1.35, 2.6, 2.6, "5  Class-3 training set", "R   real images only\nG   R + generated\nP   R + pasted\n"
+    box(6.25, 1.1, 2.6, 1.95, "5  Class-3 training set", "R   real images only\nG   R + generated\nP   R + pasted\n"
         "(P_box, P_rot likewise)\nclass 4, good: unchanged", g)
-    box(9.2, 2.95, 2.75, 2.2, "6  Classifiers (laptop)", "DINOv2-L, frozen, +\nlogistic regression\n"
+    box(9.2, 2.4, 2.75, 1.7, "6  Classifiers (laptop)", "DINOv2-L, frozen, +\nlogistic regression\n"
         "ResNet-18, ConvNeXt-T,\nfine-tuned", g)
-    box(9.2, 0.15, 2.75, 2.4, "7  Measured", "validation: pick number\nand weight of synthetic\nimages; final test, once:\n"
+    box(9.2, 0.1, 2.75, 1.95, "7  Measured", "validation: pick number\nand weight of synthetic\nimages; final test, once:\n"
         "class-3 recall; class 4 and\ngood must not drop > 0.02", g)
-    arrow(1.425, 2.95, 1.425, 2.55)
-    arrow(2.8, 1.35, 3.15, 1.35)
-    arrow(2.8, 2.2, 3.15, 3.3)
-    arrow(5.9, 3.7, 6.25, 3.2)
-    arrow(5.9, 1.5, 6.25, 2.1)
-    arrow(8.85, 3.2, 9.2, 3.7)
-    arrow(10.575, 2.95, 10.575, 2.55)
+    arrow(1.425, 2.4, 1.425, 2.05)
+    arrow(2.8, 1.0, 3.15, 1.0)
+    arrow(2.8, 1.7, 3.15, 2.7)
+    arrow(5.9, 3.1, 6.25, 2.5)
+    arrow(5.9, 1.2, 6.25, 1.7)
+    arrow(8.85, 2.5, 9.2, 3.1)
+    arrow(10.575, 2.4, 10.575, 2.05)
     head(fig, t, "Design: one scarce class, one generator per chain, paste controls",
          "Colour as in every chart: orange = generated, blue = pasted. Validation and test images never enter "
          "training or generation, and test images never enter the choice of settings; a script checks this.")
@@ -506,42 +512,44 @@ def fig05(t, mode, private):
 
 def fig06(S, t, mode):
     E = S["explore"]
+    rows4, rows10 = "4 real images", "10 real images"
     groups = [
-        ("Primary (registered; tested at n = 4)",
-         [("G* − R,  n = 4", S["primary"]["n4"], True), ("G* − R,  n = 10", S["primary"]["n10"], False)]),
-        ("vs. paste, not rotated (registered)",
-         [("G* − P*,  n = 4", S["H-v2b"]["n4"], True), ("G* − P*,  n = 10", S["H-v2b"]["n10"], False)]),
-        ("vs. rotated paste (exploratory)",
-         [("G* − P_rot*,  n = 4", E["dinov2|G* - P_rot*|n4"], False),
-          ("G* − P_rot*,  n = 10", E["dinov2|G* - P_rot*|n10"], False)]),
+        ("Generated vs. real images only  (G* − R)",
+         [(rows4, S["primary"]["n4"], True), (rows10, S["primary"]["n10"], False)]),
+        ("Generated vs. plain paste  (G* − P*)",
+         [(rows4, S["H-v2b"]["n4"], True), (rows10, S["H-v2b"]["n10"], False)]),
+        ("Generated vs. rotated paste  (G* − P_rot*)",
+         [(rows4, E["dinov2|G* - P_rot*|n4"], False), (rows10, E["dinov2|G* - P_rot*|n10"], False)]),
     ]
-    fig = plt.figure(figsize=(W, 5.7))
-    ax = fig.add_axes([0.375, 0.225, 0.36, 0.515])
+    fig = plt.figure(figsize=(W, 6.2))
+    ax = fig.add_axes([0.375, 0.205, 0.36, 0.555])
     lab = transforms.blended_transform_factory(fig.transFigure, ax.transData)
     y = 0.0
     for title, rows in groups:
         fig.text(0.02, y, title, transform=lab, fontsize=10, fontweight="bold", color=t["fg"], va="center")
-        y += 1.0
+        y += 1.05
         for name, r, tested in rows:
-            ax.plot([r["lo"], r["hi"]], [y, y], color=t["gen"], lw=2.2, solid_capstyle="round", zorder=3)
-            ax.scatter(r["chains"], [y + 0.32] * len(r["chains"]), s=34, marker="o", facecolor=t["bg"],
-                       edgecolor=t["fg2"], linewidth=1.2, zorder=3)
-            ax.scatter([r["delta"]], [y], s=74, marker="D", zorder=4, linewidth=1.8, edgecolor=t["gen"],
-                       facecolor=t["gen"] if tested else t["bg"])
-            fig.text(0.36, y, name, transform=lab, ha="right", va="center", fontsize=10.5, color=t["fg"])
-            fig.text(0.765, y - 0.06, f"{sgn(r['delta'])}  [{sgn(r['lo'])}, {sgn(r['hi'])}]", transform=lab,
-                     va="center", fontsize=10.5, color=t["fg"])
+            ax.plot([r["lo"], r["hi"]], [y, y], color=t["gen"], lw=2.6 if tested else 1.8, solid_capstyle="round",
+                    alpha=1.0 if tested else 0.6, zorder=3)
+            ax.scatter(r["chains"], [y + 0.30] * len(r["chains"]), s=30, marker="o", facecolor=t["bg"],
+                       edgecolor=t["fg2"], linewidth=1.1, zorder=3)
+            ax.scatter([r["delta"]], [y], s=92 if tested else 64, marker="D", zorder=4, linewidth=1.8,
+                       edgecolor=t["gen"], facecolor=t["gen"] if tested else t["bg"])
+            fig.text(0.36, y, name, transform=lab, ha="right", va="center", fontsize=10.5,
+                     color=t["fg"] if tested else t["fg2"], fontweight="bold" if tested else "normal")
+            fig.text(0.765, y - 0.08, f"{sgn(r['delta'])}  [{sgn(r['lo'])}, {sgn(r['hi'])}]", transform=lab,
+                     va="center", fontsize=10.5, color=t["fg"], fontweight="bold" if tested else "normal")
             if tested:
                 v = r["judgement"]
                 why = "; ".join(r.get("why", []))
                 v = f"{v}: {why}" if why else f"{v} (hypothesis test)"
             elif "judgement" in r:
-                v = "described only (set in advance)"
+                v = "no verdict (set in advance)"
             else:
-                v = "exploratory, not tested"
-            fig.text(0.765, y + 0.38, v, transform=lab, va="center", fontsize=9.3, color=t["fg2"])
-            y += 1.0
-        y += 0.35
+                v = "exploratory, no verdict"
+            fig.text(0.765, y + 0.36, v, transform=lab, va="center", fontsize=9.3, color=t["fg2"])
+            y += 1.25
+        y += 0.3
     ax.set_ylim(y - 0.55, -0.55)
     ax.set_yticks([])
     ax.axvline(0, color=t["fg2"], lw=1.1, zorder=1)
@@ -560,10 +568,11 @@ def fig06(S, t, mode):
              transform=transforms.blended_transform_factory(fig.transFigure, ax.transAxes))
     a, b = S["primary"]["n4"], S["H-v2b"]["n4"]
     assert a["final"] == "supported" and b["judgement"] == "supported"
-    head(fig, t, f"Pre-registered test, 4 real images: with generated images, class-3 recall was {sgn(a['delta'])} "
-                 f"above real images only and {sgn(b['delta'])} above paste",
-         "DINOv2-L + LR, 300 held-out test images. G*, P*, P_rot*: number and weight of synthetic images chosen per chain "
-         "on validation data only.")
+    head(fig, t, f"With 4 real images, generated images beat real images only ({sgn(a['delta'])}) and plain "
+                 f"paste ({sgn(b['delta'])})",
+         "Difference in class-3 recall, DINOv2-L + LR, 300 held-out test images. Stars: number and weight of added "
+         "images chosen per chain on validation data only. Bold rows carry a pre-registered hypothesis test.",
+         tier="PRE-REGISTERED")
     foot(fig, t, "Diamond: mean difference (filled = hypothesis test, open = not tested). Bar: 95% interval, paired "
                  "bootstrap over chains and images. Small circles: the 3 chains. Supported = mean difference ≥ +0.02 "
                  "and the hypothesis test against 0 passes; the primary row also needs the guardrails (rules set in advance). "
@@ -617,7 +626,7 @@ def fig07(S, t, mode):
                columnspacing=1.0, labelcolor=t["fg2"])
     head(fig, t, "4 real images: CNNs with generated images stay below DINOv2 trained on real images alone",
          "Carinthia-S, defect-centred 128 px crops. Fixed setting: 200 synthetic images, weight 1 : 1. "
-         "Points: one per chain, left to right s0, s1, s2 (CNNs: mean of 6 seeds).")
+         "Points: one per chain, left to right s0, s1, s2 (CNNs: mean of 6 seeds).", tier="SECONDARY ANALYSIS")
     foot(fig, t, "Secondary analysis: added after the validation results were seen, settings fixed before the test "
                  "run. Source: results/v2_stats.json, results/per_chain_recall.json.")
     save(fig, "fig07_classifiers", mode)
@@ -668,17 +677,21 @@ def fig08(S, t, mode):
         ax.text(0, 1.30, name, transform=ax.transAxes, fontsize=11, fontweight="bold", color=t["fg"], va="bottom")
         ax.text(0, 1.165, f"class 3 {sgn(dy.mean())},  class 4 {sgn(dx.mean())}", transform=ax.transAxes,
                 fontsize=9.8, color=t["fg"], va="bottom")
-        ax.text(0, 1.04, "✓ within the guardrail" if ok else "✕ guardrail failed", transform=ax.transAxes,
-                fontsize=10.5, color=t["fg"], va="bottom", fontweight="bold")
+        over = S["secondary"][key]["guard"]["4"]["chains_over"]
+        assert over == int((dx < -0.02).sum()), key
+        verdict = "✕ guardrail failed" if not ok else "✓ within the guardrail"
+        if ok and over:
+            verdict = f"✓ within ({over} chain beyond)"
+        ax.text(0, 1.04, verdict, transform=ax.transAxes, fontsize=10.5, color=t["fg"], va="bottom",
+                fontweight="bold")
         ax.set_xlabel("Change in class-4 recall")
         ax.text(-0.058, -0.018, "beyond −0.02", fontsize=9.3, color=t["fg2"], va="center")
         if i == 0:
             ax.set_ylabel("Change in class-3 recall")
     assert failed == ["ConvNeXt-T"], failed
-    head(fig, t, "ConvNeXt-T pays for its class-3 gain with class-4 recall beyond the guardrail; DINOv2 and "
-                 "ResNet-18 stay within it",
-         "Change when 200 generated images are added to 4 real images (G − R). Open diamonds: the 3 chains (CNNs: "
-         "mean of 6 seeds). Filled diamond: mean of the chains, which is what the pre-set guardrail judges.")
+    head(fig, t, "ConvNeXt-T pays for its class-3 gain with class-4 recall beyond the guardrail",
+         "Change when 200 generated images are added to 4 real images. Up = class 3 better, left = class 4 worse. "
+         "Open diamonds: the 3 chains. Filled diamond: their mean, which the pre-set guardrail judges.", tier="SECONDARY ANALYSIS")
     foot(fig, t, "Secondary analysis (fixed setting, weight 1 : 1). Good-image recall did not change in any run. "
                  "Source: results/v2_stats.json, results/per_chain_recall.json.")
     save(fig, "fig08_tradeoff", mode)
@@ -721,7 +734,7 @@ def fig09(S, t, mode):
     ax.set_xlabel("Number of real class-3 training images (log scale)")
     ax.set_ylabel("Class-3 recall (300 held-out test images)")
     hd = [Line2D([], [], color=t["neutral"], lw=2, marker=MARK["R"], markersize=6.5, markeredgecolor=t["bg"],
-                 label="Real images only: mean ± SD over chains"),
+                 label="Real images only: mean; grey band = ± SD over chains"),
           Line2D([], [], color=t["gen"], ls="", marker=MARK["G"], markersize=8, markeredgecolor=t["bg"],
                  label="4 or 10 real images + generated images (G*, mean of 3 chains)"),
           Line2D([], [], color=t["gen"], lw=1.3, ls=(0, (2, 2)), marker="o", markersize=6, markerfacecolor=t["bg"],
@@ -729,10 +742,10 @@ def fig09(S, t, mode):
     ax.legend(handles=hd, loc="lower right", fontsize=9.5, labelcolor=t["fg2"], bbox_to_anchor=(1.0, 0.17),
               frameon=True, facecolor=t["bg"], edgecolor="none", framealpha=1.0)
     rest = ", ".join(f"{rc[str(k)][0]:.3f} at {k}" for k in n_all[n_all > 100])
-    head(fig, t, f"4 real images plus generated images do about as well as {eq['G*|n4']:.1f} real images; "
-                 f"10 plus generated, about {eq['G*|n10']:.1f}",
+    head(fig, t, f"4 real images plus generated images score like about {eq['G*|n4']:.0f} real images; "
+                 f"10 plus generated, like about {eq['G*|n10']:.0f}",
          "DINOv2-L + LR on defect-centred crops. Real-only curve: 10 chains for n = 4 to 50, 5 sets for n = 100. "
-         f"Beyond the plot the curve stays flat: {rest} real images.")
+         f"Beyond the plot the curve stays flat: {rest} real images.", tier="EXPLORATORY")
     foot(fig, t, "Exploratory, point estimates without intervals; read off a monotone fit of the real-only curve, "
                  "interpolated on log n. The band is the SD across chains, not an interval for the diamonds. "
                  "Source: results/v2_stats.json.")
@@ -774,7 +787,8 @@ def fig10(S, t, mode):
         ax.set_xlabel("Synthetic class-3 images added (log scale)")
         ax.set_title(f"{n} real class-3 images", fontsize=11, fontweight="bold", color=t["fg"], pad=10, loc="left")
         if i == 0:
-            ax.text(430, 0.0212, "+0.02 margin", fontsize=9.5, color=t["fg2"], va="bottom", ha="right")
+            ax.text(430, 0.0212, "+0.02 margin (dashed, both panels)", fontsize=9.5, color=t["fg2"], va="bottom",
+                    ha="right")
             ax.set_ylabel("Change in class-3 recall vs. R")
     names = {"G": "G: generated", "P_rot": "P_rot: rotated paste", "P_box": "P_box: paste + real surround",
              "P": "P: paste, not rotated"}
@@ -784,11 +798,10 @@ def fig10(S, t, mode):
                columnspacing=1.4, labelcolor=t["fg2"])
     g4 = gc["G|n4|r1"]
     assert min(g4[1:]) > 0.035 and max(max(gc["P|n4|r1"]), max(gc["P_box|n4|r1"])) < 0.005
-    head(fig, t, "4 real images: from 25 generated images on, recall was about +0.04 above real images only; "
-                 "paste without rotation stayed at or just below 0",
+    head(fig, t, "With 4 real images, the gain from generated images levels off at about +0.04 from 25 images on",
          "DINOv2-L + LR, weight real : synthetic = 1 : 1, 300 held-out test images, mean of 3 chains. "
-         "R = real images only.")
-    foot(fig, t, "Exploratory, described only: no test, no interval. The pre-registered analysis uses the setting "
+         "R = real images only. Plain paste stayed at or just below 0.", tier="EXPLORATORY")
+    foot(fig, t, "Exploratory: no test, no interval. The pre-registered analysis uses the setting "
                  "chosen per chain on validation data (fig. 6). Source: results/v2_stats.json.")
     save(fig, "fig10_g_curve", mode)
 
@@ -838,7 +851,7 @@ def fig11(S, t, mode):
     head(fig, t, f"Every class-3 error is a class-3 defect called class 4: {a[0, 1]} → {b[0, 1]} of {a[0].sum()} "
                  "with generated images",
          f"DINOv2-L + LR with 4 real class-3 images. Counts summed over 3 chains ({a[0].sum() // 3} class-3, "
-         f"{a[1].sum() // 3} class-4, {a[2].sum() // 3} good test images each); % of the true class.")
+         f"{a[1].sum() // 3} class-4, {a[2].sum() // 3} good test images each); % of the true class.", tier="PRIMARY ANALYSIS")
     foot(fig, t, "Defect images carry a framing square that good images lack, so the error-free good row is not "
                  "evidence about defect detection. Source: results/v2_stats.json.")
     save(fig, "fig11_confusion", mode)
