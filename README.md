@@ -15,7 +15,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/fig00_hero_dark.png">
-  <img src="figures/fig00_hero_light.png" alt="Class-3 test images classified wrongly out of 900 with 4 real images: real images only 115, plus pasted copies 119, plus rotated pasted copies 98 (exploratory), plus generated images 80; 35 fewer errors, recall 87.2% to 91.1%">
+  <img src="figures/fig00_hero_light.png" alt="Class-3 test images classified wrongly out of 900 with 4 real images: real images only 115, plus plain cut-and-paste 119, plus rotated cut-and-paste 98 (exploratory), plus generated images 80; 35 fewer errors, recall 87.2% to 91.1%">
 </picture>
 
 > [!NOTE]
@@ -41,7 +41,7 @@
   <img src="figures/fig01_primary_light.png" alt="Class-3 recall of DINOv2, one line per chain, from real images only (R) to real plus generated images (G*): mean 0.872 to 0.911 at n = 4, and 0.923 to 0.951 at n = 10">
 </picture>
 
-<sub>Figure 1. Each line is one chain, from real images only (R) to real plus generated images (G\*); the thick bars and bold labels are the means of the 3 chains. Left, 4 real images: the pre-registered hypothesis test. Right, 10 real images: reported without a verdict, as set in advance; chain s1 already reaches 0.990 with real images alone.</sub>
+<sub>Figure 1. Each line is one chain (one set of real images), from real images only (R) to real plus generated images (G\*); the thick bars and bold labels are the means of the 3 chains, and the shaded wedge is the mean gain. Left, 4 real images: the pre-registered hypothesis test. Right, 10 real images: reported without a verdict, as set in advance; chain s1 already reaches 0.990 with real images alone.</sub>
 
 The results use the report sentences written before the test.
 
