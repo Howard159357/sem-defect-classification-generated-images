@@ -30,7 +30,7 @@ Figure 7. Class-3 recall at n = 4 with the fixed setting (200 synthetic images, 
 | ConvNeXt-T | P_box | 0.703 | 0.975 | 1.000 | 0.893 | 18 |
 | ConvNeXt-T | G | 0.830 | 0.943 | 1.000 | 0.924 | 18 |
 
-The pre-registered primary analysis (H1, DINOv2, settings chosen on validation data): supported at n = 4 (+0.039, [+0.019, +0.067]); described only at n = 10 (+0.028, [+0.000, +0.056]).
+The pre-registered primary analysis (H1, DINOv2, settings chosen on validation data): supported at n = 4 (+0.039, [+0.019, +0.067]); no verdict at n = 10, as set in advance (+0.028, [+0.000, +0.056]).
 
 - **DINOv2-L + LR (S1 supported).** With only 4 real images class-3 recall was 0.872; with 200 generated images added it was 0.912 (+0.040; per chain +0.063 / +0.033 / +0.023; bootstrap interval [+0.017, +0.073]; chain-level t interval [−0.012, +0.092], still includes 0); the 3 chains agree in direction; class-4 recall changed by −0.002 and good recall by 0.000 (limit −0.02).
 - **ResNet-18 (S1 supported).** With only 4 real images class-3 recall was 0.683; with 200 generated images added it was 0.809 (+0.127; per chain +0.117 / +0.192 / +0.071; bootstrap interval [+0.071, +0.189]; chain-level t interval [−0.026, +0.279], still includes 0); the 3 chains agree in direction; class-4 recall changed by −0.018 and good recall by 0.000 (limit −0.02). The mean over chains is within the limit, but in 1 chain the mean class-4 drop exceeds 0.02, and 7 of 18 runs exceed it on their own.
@@ -72,7 +72,7 @@ For DINOv2, G − P_box equals G − R exactly. This is not a copying error: at 
 
 At g = 50 most CNN differences shrink: ResNet-18's G − P_box is only +0.005 (per chain +0.012 / +0.007 / −0.004), and ConvNeXt-T's G − P is −0.100 / +0.258 / −0.043 per chain. Fixing g = 200 favours "generated beats paste"; this was disclosed before the test (disclosure 4).
 
-## Exploratory observations (described only, no verdict)
+## Exploratory observations (no verdict)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/fig09_real_curve_dark.png">
@@ -93,7 +93,7 @@ Figure 9. Class-3 recall of DINOv2 on real images only against the number of rea
   <img src="figures/fig10_g_curve_light.png" alt="For DINOv2 at n = 4 and n = 10: change in class-3 recall relative to R against the number of synthetic images from 10 to 400, for generated images, rotated paste, paste with surround and paste">
 </picture>
 
-Figure 10. DINOv2-L + logistic regression: change in class-3 recall relative to real images only (R) for different numbers of synthetic images (real : synthetic = 1 : 1, mean of 3 chains). Exploratory, described only.
+Figure 10. DINOv2-L + logistic regression: change in class-3 recall relative to real images only (R) for different numbers of synthetic images (real : synthetic = 1 : 1, mean of 3 chains). Exploratory, no verdict.
 
 - At n = 4, generated images are at about +0.04 from 25 images on and change little up to 400; paste with surround (P_box) is around 0, and paste without rotation (P) is slightly below R at all six sizes (−0.006 to −0.013).
 - At n = 10 the gain from generated images is smaller (+0.012 to +0.027) and is +0.017 at 400 images (0.007 less than at 200, about 6 of 900 images); rotated paste is at +0.011 to +0.014.
@@ -143,7 +143,7 @@ Figure 11. Confusion matrices of DINOv2-L + logistic regression at n = 4 (image 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/fig12_timeline_dark.png">
-  <img src="figures/fig12_timeline_light.png" alt="Timeline: round 1, the background-cue diagnosis, round-2 design frozen, the internal evaluation on the test set, the plan for this test fixed, generation in the cloud, the external time stamp, this test with no re-runs">
+  <img src="figures/fig12_timeline_light.png" alt="Timeline: round 1, the background-cue diagnosis, round-2 design frozen, the note on the earlier use of the test set, the plan for the final test fixed, generation in the cloud, the external time stamp, the final test run once">
 </picture>
 
 Figure 12. Timeline (2026, Taiwan time; events are evenly spaced, not to scale).
@@ -153,11 +153,11 @@ Figure 12. Timeline (2026, Taiwan time; events are evenly spaced, not to scale).
 | 11-04 to 11-08 | Round 1: whole images, segmentation and classification; redesigned after a diagnosis |
 | 11-08 | Diagnosis: on whole images, background shading alone separates the classes |
 | 11-08 to 11-10 | Round-2 design frozen: defect-centred crops, paste controls, hypotheses, tests and report sentences |
-| 11-11 | The test set is used for one internal evaluation; no setting is changed afterwards |
-| 11-12 | Plan for this test fixed: 6 generators; formal hypothesis test at n = 4 only, n = 10 described only |
+| 11-11 | The same test set had been used once before for an internal evaluation; no setting was changed afterwards |
+| 11-12 | Plan for the final test fixed: 6 generators; formal hypothesis test at n = 4 only, n = 10 without a verdict |
 | 11-13 | 6 generators fine-tuned and 2,400 images generated on a cloud A100 |
 | 11-13 22:21 | Plan, code and frozen settings pushed to a private repository (server time 2026-11-13T14:21:22Z) |
-| 11-13 22:36 to 11-14 00:24 | This test run once (one stop, a recorded one-line fix, resumed; not rerun) |
+| 11-13 22:36 to 11-14 00:24 | Final test run once (one stop, a recorded one-line fix, resumed; not rerun) |
 
 Before round 2 there was another design: whole images, segmentation and classification together, and pseudo-labels for the generated images from SAM 2 [23]. The diagnosis found the background-shading cue described under "Why 128 px crops" on the main page, and other problems, so the design became the present one:
 
@@ -171,10 +171,10 @@ Before round 2 there was another design: whole images, segmentation and classifi
 
 ## Disclosures
 
-Points 1 to 10 were in the plan before the test and are listed as planned (some validation-stage numbers cited in the plan are left out here); points 11 and 12 concern this test itself. The decisions in points 1, 2, 4, 5 and 6 were made during the earlier internal-evaluation stage, on validation data, and were used unchanged; the settings of G\* were chosen again on validation data by the same rule (point 3).
+Points 1 to 10 were in the plan before the test and are listed as planned (some validation-stage numbers cited in the plan are left out here); points 11 and 12 concern the final test itself. The decisions in points 1, 2, 4, 5 and 6 were made during the earlier internal-evaluation stage, on validation data, and were used unchanged; the settings of G\* were chosen again on validation data by the same rule (point 3).
 
 1. **The number of steps was chosen on the validation data of one chain only.** 12,000 training steps were decided during the earlier internal-evaluation stage from the validation data of a single chain (n = 4, chain s0) on 2026-11-09; the choice was not covered by a rule set in advance. It was kept throughout.
-2. **The number of chains changed during the work, with the validation results in view.** It changed several times during the earlier internal-evaluation stage and ended at 3 chains each for n = 4 and n = 10 (4 and 3 were planned). On 2026-11-10 it was decided not to add the fourth chain at n = 4; this test uses the same 3 chains.
+2. **The number of chains changed during the work, with the validation results in view.** It changed several times during the earlier internal-evaluation stage and ended at 3 chains each for n = 4 and n = 10 (4 and 3 were planned). On 2026-11-10 it was decided not to add the fourth chain at n = 4; the final test uses the same 3 chains.
 3. **Optimistic bias of the validation set.**
    - The chosen setting is the best of 12 settings (on validation data G\* − R averages +0.024 at n = 4 and +0.016 at n = 10).
    - The same validation set also served to choose the number of steps, to apply the stop rule, and to decide the number of chains, the fixed setting and the level at which the guardrail is judged.
@@ -200,7 +200,7 @@ Points 1 to 10 were in the plan before the test and are listed as planned (some 
    - The shading of generated images rotates with the mask (in real SEM images its direction is fixed).
    - There is one generator per (n, chain).
    - The generator's mask encoder starts from NVIDIA NV-DINOv2, a separate checkpoint from the frozen DINOv2-L [3] used by the primary classifier.
-   - R, P and P_box do not involve the generator; their test predictions are reused from the earlier internal evaluation, and only G was recomputed (counts under "What this test actually computed" on the main page).
+   - R, P and P_box do not involve the generator; their test predictions are reused from the earlier internal evaluation, and only G was recomputed (counts under "How the final test ran" in the Pre-registration section of the main page).
    - The DINOv2 features of the test images were computed when the feature cache was built (the cache code runs over every row of the split table), but no evaluation code had read them before that earlier internal evaluation. This is inferred from the code and the size of the cache file; the file was not opened to check.
    - CNN reproducibility check: before the test started, the two models of R at n = 4, chain s0, seed 0 were retrained and scored on the validation set; their recall for all three classes was exactly the earlier value (difference 0.000). Only then was the lock set and the test started.
 9. **The scale range for generation drew on the area distribution of a test set.**
@@ -214,7 +214,7 @@ Points 1 to 10 were in the plan before the test and are listed as planned (some 
     - After the lock was set at 22:36:04, the program stopped while copying the earlier CNN results (KeyError): the earlier record file used the Windows path separator (`\`) and the program looked up `/`.
     - State at the stop: the DINOv2 test predictions were saved and the non-G models were bit-for-bit identical to the earlier output; no CNN result had been copied or trained, no statistic computed, and no test number shown.
     - Only that lookup line was changed (both separators are accepted), and the resume function was made to accept exactly this one recorded change; the file hashes before and after, the reason and the state at the stop are recorded in `CODE_FIX.json` (not published in this repository; available on request). No other code and no frozen setting changed. Resumed at 22:42, finished at 00:24:10.
-12. **This is the second use of the test set.** The same test set was used earlier for one internal evaluation; no setting was changed afterwards, and the generation, downstream and statistical methods all follow the previously frozen version.
+12. **Earlier use of the test set.** The same test set had been used once before for an internal evaluation; no setting was changed afterwards.
 
 Two further points:
 
@@ -236,9 +236,9 @@ The A100 was used for generation only. The three classifiers (DINOv2-L + logisti
 
 ## Pre-registration evidence
 
-- Before this test started, the full plan, all code, the frozen settings file, the lock file of the test list and a list of file hashes were pushed to a private GitHub repository.
+- Before the final test started, the full plan, all code, the frozen settings file, the lock file of the test list and a list of file hashes were pushed to a private GitHub repository.
 - Commit: `c5530861e38134f20ab7136e31e587d181b22abf`
-- Push time recorded by the GitHub server, `pushed_at`: `2026-11-13T14:21:22Z` (2026-11-13 22:21 Taiwan time). The test started at 22:36:04.
+- Push time recorded by the GitHub server, `pushed_at`: `2026-11-13T14:21:22Z` (2026-11-13 22:21 Taiwan time). The final test started at 22:36:04.
 - sha256 of the frozen settings file: `4dae57858e6cbe29d932abb9f41988e75c9635d55cbefb80dd2c13a73a28f3fd`. The test program checks it at start and refuses to run on a mismatch. (Git stores the file with LF line endings; converted back to CRLF, its sha256 is this value.)
 - The repository stays private and is not modified; a change would defeat the purpose of the time stamp.
 - **Verification on request**: the commit hash and `pushed_at` can be looked up live in a video call, and the sha256 of the frozen settings file checked.

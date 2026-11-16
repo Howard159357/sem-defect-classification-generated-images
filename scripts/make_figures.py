@@ -1,6 +1,6 @@
 """Figures of the report, drawn from the one-shot test results (public AnomalyGen v1.0.0, commit fcad44cd).
 
-  python scripts/make_figures.py                      the charts and diagrams (fig01, 02, 06-12) from results/;
+  python scripts/make_figures.py                      the charts and diagrams (fig00, 01, 02, 06-12) from results/;
                                                       everything they need is in this repo
   python scripts/make_figures.py --private-root DIR --generated-dir SUB --test-dir SUB
                                                       also: refresh results/per_chain_recall.json from the per-image
@@ -12,9 +12,10 @@
 
 Inputs (results/):
   v2_stats.json          statistics of the single test run
+  design.json            design facts and design-stage measurements for figures 2, 5 and 12 (not test results)
   per_chain_recall.json  recalls per chain, derived from the per-image predictions with --private-root and checked
                          against v2_stats.json on every run
-Outputs (figures/): fig01..fig12 in the order they appear in README.md and DETAILS.md, each as *_light.png and
+Outputs (figures/): fig00 (headline) and fig01..fig12 in the order they appear in README.md and DETAILS.md, each as *_light.png and
 *_dark.png (the pages pick one by colour scheme). All figures are 10 in wide at 180 dpi (2x the README column) and saved as
 palette PNGs.
 
@@ -128,6 +129,11 @@ def frame(ax, t):
         s.set_color(t["grid"])
 
 
+def design():
+    """Design facts and design-stage measurements (results/design.json); not results of the test run."""
+    return json.loads((RES / "design.json").read_text(encoding="utf-8"))
+
+
 def per_chain_doc():
     return json.loads((RES / "per_chain_recall.json").read_text(encoding="utf-8"))
 
@@ -146,6 +152,61 @@ def check_per_chain(S):
     return doc
 
 
+# ------------------------------------------------------------------------------------------------ fig00
+
+def fig00(S, t, mode):
+    """Headline figure for the top of the README: class-3 errors out of all test predictions at n = 4, per training
+    set at the setting chosen on validation data. Errors are counted from the confusion matrices where they exist
+    and from the per-chain recalls otherwise; both must agree."""
+    doc = check_per_chain(S)
+    q = doc["primary"]["n4"]
+    cm = {a: np.array(S["confusion"][f"dinov2|{a}|n4|primary"]) for a in ("R", "G*", "P*")}
+    per_chain = cm["R"][0].sum() // 3                                  # class-3 test images per chain
+    err = {a: int(round(sum((1 - v) * per_chain for v in q[a]))) for a in ("R", "P*", "P_rot*", "G*")}
+    for a, m in cm.items():
+        assert err[a] == m[0, 1] + m[0, 2], a
+    total = 3 * per_chain
+    rows = [("R", "Real images only", t["neutral"], False),
+            ("P*", "+ pasted copies of the same defects", t["paste"], False),
+            ("P_rot*", "+ rotated pasted copies", t["rot"], True),
+            ("G*", "+ generated images (AnomalyGen)", t["gen"], False)]
+    fig = plt.figure(figsize=(W, 4.6))
+    ax = fig.add_axes([0.345, 0.17, 0.43, 0.56])
+    for i, (a, name, col, explo) in enumerate(rows):
+        y = len(rows) - 1 - i
+        ax.barh(y, err[a], height=0.62, color=t["bg"] if explo else col, edgecolor=col, linewidth=1.6,
+                hatch="////" if explo else None, zorder=3)
+        ax.text(err[a] + 2.5, y, f"{err[a]}", va="center", fontsize=14, fontweight="bold", color=t["fg"])
+        ax.text(-0.02, y, name, transform=ax.get_yaxis_transform(), ha="right", va="center", fontsize=11.5,
+                color=t["fg"], fontweight="bold" if a in ("R", "G*") else "normal")
+        if explo:
+            ax.text(-0.02, y - 0.33, "exploratory comparison", transform=ax.get_yaxis_transform(), ha="right",
+                    va="center", fontsize=9.5, color=t["fg2"], style="italic")
+    p = S["primary"]["n4"]
+    gain = err["R"] - err["G*"]
+    ax.annotate("", xy=(err["G*"], -0.45), xytext=(err["R"], -0.45), annotation_clip=False,
+                arrowprops=dict(arrowstyle="-|>", color=t["gen"], lw=1.8, shrinkA=0, shrinkB=0))
+    fig.text(0.79, 0.43, f"{gain} fewer errors\n({gain / err['R']:.0%} fewer)", fontsize=13, fontweight="bold",
+             color=t["gen"], va="center")
+    fig.text(0.79, 0.30, f"class-3 recall\n{p['recB']:.1%} → {p['recA']:.1%}", fontsize=11, color=t["fg"],
+             va="center", linespacing=1.35)
+    ax.set_xlim(0, max(err.values()) * 1.12)
+    ax.set_ylim(-0.75, len(rows) - 0.45)
+    ax.set_yticks([])
+    ax.set_xticks([0, 50, 100])
+    ax.tick_params(axis="x", length=0, labelsize=10)
+    ax.xaxis.grid(True, color=t["grid"], lw=0.8)
+    ax.set_axisbelow(True)
+    ax.spines["left"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+    ax.set_xlabel(f"Class-3 test images classified wrongly, out of {total:,} (fewer is better)", fontsize=10.5)
+    head(fig, t, f"With 4 real images of a defect class, generated images cut class-3 errors from {err['R']} to "
+                 f"{err['G*']}",
+         f"DINOv2 + logistic regression. {per_chain} held-out test images × 3 sets of 4 real images. Pre-registered "
+         "comparison against real images only and against plain paste; rotated paste is exploratory.")
+    save(fig, "fig00_hero", mode)
+
+
 # ------------------------------------------------------------------------------------------------ fig01
 
 def fig01(S, t, mode):
@@ -159,14 +220,20 @@ def fig01(S, t, mode):
         r, g = doc["primary"][n]["R"], doc["primary"][n]["G*"]
         x = S["primary"][n]
         for k in range(3):
-            ax.plot([0, 1], [r[k], g[k]], color=t["fg2"], lw=1.2, zorder=2)
+            ax.plot([0, 1], [r[k], g[k]], color=t["fg2"], lw=1.0, alpha=0.7, zorder=2)
         ax.plot([-0.13, 0.13], [np.mean(r)] * 2, color=t["neutral"], lw=3.4, solid_capstyle="round", zorder=3)
         ax.plot([0.87, 1.13], [np.mean(g)] * 2, color=t["gen"], lw=3.4, solid_capstyle="round", zorder=3)
         ax.scatter([0] * 3, r, s=52, marker=MARK["R"], facecolor=t["bg"], edgecolor=t["neutral"], linewidth=1.7, zorder=4)
         ax.scatter([1] * 3, g, s=52, marker=MARK["G"], facecolor=t["bg"], edgecolor=t["gen"], linewidth=1.7, zorder=4)
-        for k, (yr, yg) in enumerate(zip(spread(r, 0.0115), spread(g, 0.0115))):
-            ax.text(-0.17, yr, f"s{k}  {r[k]:.3f}", ha="right", va="center", fontsize=9.8, color=t["fg"])
-            ax.text(1.17, yg, f"{g[k]:.3f}  s{k}", ha="left", va="center", fontsize=9.8, color=t["fg"])
+        # chain labels in muted ink, the mean in bold beside its bar; all four are spread so none is misread
+        for vals, lx, ha, side in ((r, -0.17, "right", "R"), (g, 1.17, "left", "G")):
+            pos = spread(list(vals) + [np.mean(vals)], 0.0118)
+            for k in range(3):
+                txt = f"s{k}  {vals[k]:.3f}" if side == "R" else f"{vals[k]:.3f}  s{k}"
+                ax.text(lx, pos[k], txt, ha=ha, va="center", fontsize=9.3, color=t["fg2"])
+            ax.text(lx, pos[3], f"mean {np.mean(vals):.3f}" if side == "R" else f"{np.mean(vals):.3f} mean",
+                    ha=ha, va="center", fontsize=10.5, fontweight="bold",
+                    color=t["fg"])
         ax.set_xlim(-0.75, 1.75)
         ax.set_ylim(0.84, 1.005)
         ax.set_yticks([0.85, 0.90, 0.95, 1.00])
@@ -177,7 +244,7 @@ def fig01(S, t, mode):
         ax.set_axisbelow(True)
         ax.spines["left"].set_visible(False)
         if i == 0:
-            ax.set_ylabel("Class-3 recall (300 new test images)")
+            ax.set_ylabel("Class-3 recall (300 held-out test images)")
         verdict = ("supported (single hypothesis test; guardrails passed)" if x["final"] == "supported"
                    else f"{x['final']} (set in advance)")
         ax.text(0, 1.215, name, transform=ax.transAxes, fontsize=11, fontweight="bold", color=t["fg"], va="bottom")
@@ -216,19 +283,25 @@ def fig02(t, mode):
                     arrowprops=dict(arrowstyle="-|>", color=t["fg2"], lw=1.4, shrinkA=0, shrinkB=0))
 
     g = t["fg2"]
-    box(0.05, 2.95, 2.75, 2.2, "1  Dataset", "Carinthia-S wafer SEM\nclass 3: 4,008 images\nclass 4: 289, good: 226\n"
-        "128 px crops on the defect", g)
-    box(0.05, 0.15, 2.75, 2.4, "2  Split, fixed first", "class 3: 10 disjoint chains\nof n = 4 … 50 train images\n"
-        "class 4, good: 50 train each\nvalidation 300 / 88 / 100\ntest 300 / 150 / 76 (locked)", g)
-    box(3.15, 2.95, 2.75, 2.2, "3  Generator (cloud)", "one per (n, chain): 6\nsees n real class-3 images\n"
-        "+ 50 good backgrounds\n12,000 steps → 400 images", t["gen"])
-    box(3.15, 0.15, 2.75, 2.4, "4  Paste controls", "same n defects, cut out,\npasted on the same 50\nbackgrounds: "
-        "P, P_box\n(+ real surround), P_rot\n(pixels rotated)", t["paste"])
+    d = design()
+    di, sp, ge = d["dataset_images"], d["split"], d["generation"]
+    trio = lambda x: " / ".join(f"{x[c]:,}" for c in ("class 3", "class 4", "good"))  # noqa: E731
+    box(0.05, 2.95, 2.75, 2.2, "1  Dataset", f"Carinthia-S wafer SEM\nclass 3: {di['class 3']:,} images\n"
+        f"class 4: {di['class 4']:,}, good: {di['good']:,}\n128 px crops on the defect", g)
+    box(0.05, 0.15, 2.75, 2.4, "2  Split, fixed first", f"class 3: {sp['chains']} disjoint chains\n"
+        f"of n = {sp['chain_sizes'][0]} … {sp['chain_sizes'][1]} train images\n"
+        f"class 4, good: {sp['train']['class 4']} train each\nvalidation {trio(sp['validation'])}\n"
+        f"test {trio(sp['test'])} (locked)", g)
+    box(3.15, 2.95, 2.75, 2.2, "3  Generator (cloud)", f"one per (n, chain): {ge['generators']}\n"
+        f"sees n real class-3 images\n+ {ge['backgrounds']} good backgrounds\n"
+        f"{ge['steps']:,} steps → {ge['images_per_generator']} images", t["gen"])
+    box(3.15, 0.15, 2.75, 2.4, "4  Paste controls", f"same n defects, cut out,\npasted on the same {ge['backgrounds']}\n"
+        "backgrounds: P, P_box\n(+ real surround), P_rot\n(pixels rotated)", t["paste"])
     box(6.25, 1.35, 2.6, 2.6, "5  Class-3 training set", "R   real images only\nG   R + generated\nP   R + pasted\n"
         "(P_box, P_rot likewise)\nclass 4, good: unchanged", g)
     box(9.2, 2.95, 2.75, 2.2, "6  Classifiers (laptop)", "DINOv2-L, frozen, +\nlogistic regression\n"
         "ResNet-18, ConvNeXt-T,\nfine-tuned", g)
-    box(9.2, 0.15, 2.75, 2.4, "7  Measured", "validation: pick number\nand weight of synthetic\nimages; this test, once:\n"
+    box(9.2, 0.15, 2.75, 2.4, "7  Measured", "validation: pick number\nand weight of synthetic\nimages; final test, once:\n"
         "class-3 recall; class 4 and\ngood must not drop > 0.02", g)
     arrow(1.425, 2.95, 1.425, 2.55)
     arrow(2.8, 1.35, 3.15, 1.35)
@@ -352,14 +425,13 @@ def fig04(t, mode, private):
 
 # ------------------------------------------------------------------------------------------------ fig05
 
-DIAGNOSIS = {"Whole image": (0.880, 0.780), "128 px crop": (0.860, 0.150)}     # (defect visible, defect hidden)
-
-
 def fig05(t, mode, private):
     """Why the task uses defect-centred crops: one class-3 and one good TRAINING image with the mean grey level of
     each row (background columns only), and the design-stage diagnosis (real images only; not results of this
     study)."""
     from PIL import Image
+    dg = design()["design_stage_diagnosis"]
+    diagnosis, top_share = dg["class3_recall"], dg["share_brighter_at_top"]
     c3 = train_rows(private, "c3_chain0", 1)[0]
     good = train_rows(private, "good_train", 1)[0]
     a, cy, cx = defect_centre(private, c3)
@@ -400,7 +472,7 @@ def fig05(t, mode, private):
                  linespacing=1.35)
     ax = fig.add_axes([0.79, yb, 0.185, h])
     ys, labels = [], []
-    for gi, (grp, (vis, hid)) in enumerate(DIAGNOSIS.items()):
+    for gi, (grp, (vis, hid)) in enumerate(diagnosis.items()):
         base = 3.0 - gi * 2.6
         ax.barh([base, base - 0.8], [vis, hid], height=0.62, color=t["neutral"], zorder=3)
         ax.patches[-1].set_alpha(0.45)
@@ -420,8 +492,9 @@ def fig05(t, mode, private):
     ax.spines["left"].set_visible(False)
     ax.set_xlabel("Class-3 recall\n(4 real images)")
     head(fig, t, "Why defect-centred crops: on whole images the background alone gives the class away",
-         "Class-3 images are mostly brighter at the top edge (90%), good images rarely (7%). A classifier that sees "
-         "only the background of a whole image still reaches 0.780; on a crop without the defect it drops to 0.150.")
+         f"Class-3 images are mostly brighter at the top edge ({top_share['class 3']:.0%}), good images rarely "
+         f"({top_share['good']:.0%}). A classifier that sees only the background of a whole image still reaches "
+         f"{diagnosis['Whole image'][1]:.3f}; on a crop without the defect it drops to {diagnosis['128 px crop'][1]:.3f}.")
     foot(fig, t, f"Images: {DATASET}; training images only. Row mean: mean grey level of each image row over the "
                  "left and right 100 columns (10 edge rows left out); the edge values under the images are means of the top or "
                  "bottom 40 rows. Bars: design-stage diagnosis with DINOv2-L + LR on the first-round "
@@ -489,7 +562,7 @@ def fig06(S, t, mode):
     assert a["final"] == "supported" and b["judgement"] == "supported"
     head(fig, t, f"Pre-registered test, 4 real images: with generated images, class-3 recall was {sgn(a['delta'])} "
                  f"above real images only and {sgn(b['delta'])} above paste",
-         "DINOv2-L + LR, 300 new test images. G*, P*, P_rot*: number and weight of synthetic images chosen per chain "
+         "DINOv2-L + LR, 300 held-out test images. G*, P*, P_rot*: number and weight of synthetic images chosen per chain "
          "on validation data only.")
     foot(fig, t, "Diamond: mean difference (filled = hypothesis test, open = not tested). Bar: 95% interval, paired "
                  "bootstrap over chains and images. Small circles: the 3 chains. Supported = mean difference ≥ +0.02 "
@@ -536,7 +609,7 @@ def fig07(S, t, mode):
     ax.set_axisbelow(True)
     ax.spines["left"].set_visible(False)
     ax.tick_params(axis="y", length=0)
-    ax.set_ylabel("Class-3 recall (300 new test images)")
+    ax.set_ylabel("Class-3 recall (300 held-out test images)")
     hd = [Line2D([], [], marker=MARK[a], ls="", markersize=7.5, markerfacecolor=t["bg"],
                  markeredgecolor=arm_col(t, a), markeredgewidth=1.5, label=ARM_TEXT[a]) for a in ARMS]
     hd.append(Line2D([], [], color=t["fg2"], lw=3.2, solid_capstyle="round", label="bar: mean"))
@@ -646,7 +719,7 @@ def fig09(S, t, mode):
     ax.spines["left"].set_visible(False)
     ax.tick_params(axis="y", length=0)
     ax.set_xlabel("Number of real class-3 training images (log scale)")
-    ax.set_ylabel("Class-3 recall (300 new test images)")
+    ax.set_ylabel("Class-3 recall (300 held-out test images)")
     hd = [Line2D([], [], color=t["neutral"], lw=2, marker=MARK["R"], markersize=6.5, markeredgecolor=t["bg"],
                  label="Real images only: mean ± SD over chains"),
           Line2D([], [], color=t["gen"], ls="", marker=MARK["G"], markersize=8, markeredgecolor=t["bg"],
@@ -713,7 +786,7 @@ def fig10(S, t, mode):
     assert min(g4[1:]) > 0.035 and max(max(gc["P|n4|r1"]), max(gc["P_box|n4|r1"])) < 0.005
     head(fig, t, "4 real images: from 25 generated images on, recall was about +0.04 above real images only; "
                  "paste without rotation stayed at or just below 0",
-         "DINOv2-L + LR, weight real : synthetic = 1 : 1, 300 new test images, mean of 3 chains. "
+         "DINOv2-L + LR, weight real : synthetic = 1 : 1, 300 held-out test images, mean of 3 chains. "
          "R = real images only.")
     foot(fig, t, "Exploratory, described only: no test, no interval. The pre-registered analysis uses the setting "
                  "chosen per chain on validation data (fig. 6). Source: results/v2_stats.json.")
@@ -764,8 +837,8 @@ def fig11(S, t, mode):
              f"{b[2, 0] + b[2, 1]}.", ha="center", fontsize=10.5, color=t["fg"])
     head(fig, t, f"Every class-3 error is a class-3 defect called class 4: {a[0, 1]} → {b[0, 1]} of {a[0].sum()} "
                  "with generated images",
-         "DINOv2-L + LR with 4 real class-3 images. Counts summed over 3 chains (300 class-3, 150 class-4, 76 good "
-         "test images each); % of the true class.")
+         f"DINOv2-L + LR with 4 real class-3 images. Counts summed over 3 chains ({a[0].sum() // 3} class-3, "
+         f"{a[1].sum() // 3} class-4, {a[2].sum() // 3} good test images each); % of the true class.")
     foot(fig, t, "Defect images carry a framing square that good images lack, so the error-free good row is not "
                  "evidence about defect detection. Source: results/v2_stats.json.")
     save(fig, "fig11_confusion", mode)
@@ -773,20 +846,9 @@ def fig11(S, t, mode):
 
 # ------------------------------------------------------------------------------------------------ fig12
 
-TIMELINE = [
-    ("r1", "Nov 4 to 8", "Round 1: whole images, segmentation and classification"),
-    ("r1", "Nov 8", "Diagnosis: on whole images, background shading alone tells the classes apart"),
-    ("r2", "Nov 8 to 10", "Round 2 design frozen: crops, paste controls, hypotheses, tests, report wording"),
-    ("r2", "Nov 11", "Test set used for one internal evaluation; no setting changed afterwards"),
-    ("r2", "Nov 12", "Plan for this test fixed: 6 generators; test at n = 4, n = 10 described only"),
-    ("r2", "Nov 13", "6 generators fine-tuned, 2,400 images generated on a cloud A100"),
-    ("stamp", "Nov 13, 22:21", "Plan, code, frozen settings pushed to a private repository (server time stamp)"),
-    ("test", "Nov 13 to 14", "This test, no re-runs, 22:36 to 00:24, on a laptop GPU (one stop, recorded fix, resumed)"),
-]
-
-
 def fig12(t, mode):
-    phase = {"r1": "Round 1", "r2": "Round 2: redesigned, registered in advance", "test": "This test, no re-runs"}
+    TIMELINE = design()["timeline"]
+    phase = {"r1": "Round 1", "r2": "Round 2: redesigned, registered in advance", "test": "Final test, run once"}
     fig = plt.figure(figsize=(W, 4.9))
     ax = fig.add_axes([0.02, 0.02, 0.96, 0.77])
     ax.set_xlim(-0.62, len(TIMELINE) - 0.38)
@@ -813,7 +875,7 @@ def fig12(t, mode):
         ax.plot([a - 0.42, b + 0.42], [0.9, 0.9], color=col, lw=2.5, solid_capstyle="round")
         x, ha = ((a + b) / 2, "center") if ph != "test" else (b + 0.42, "right")
         ax.text(x, 0.925, phase[ph], ha=ha, va="bottom", fontsize=10.5, color=t["fg"], fontweight="bold")
-    head(fig, t, "From a first design to this pre-registered test",
+    head(fig, t, "From a first design to the final pre-registered test",
          "All dates 2026, Taiwan time (UTC+8); events are evenly spaced, not to scale. Cloud GPU was used only to "
          "fine-tune the generators and generate images; every classifier ran on a laptop.")
     save(fig, "fig12_timeline", mode)
@@ -891,6 +953,7 @@ def main():
     assert S["mode"] == "test"
     for mode, t in THEMES.items():
         style(t)
+        fig00(S, t, mode)
         fig01(S, t, mode)
         fig02(t, mode)
         if args.private_root:

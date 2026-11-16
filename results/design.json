@@ -1,0 +1,27 @@
+{
+ "note": "Design facts and design-stage measurements drawn in figures 2, 5 and 12. They are not results of the test run; every test result is in v2_stats.json and per_chain_recall.json.",
+ "dataset_images": {"class 3": 4008, "class 4": 289, "good": 226},
+ "split": {
+  "chains": 10,
+  "chain_sizes": [4, 50],
+  "train": {"class 4": 50, "good": 50},
+  "validation": {"class 3": 300, "class 4": 88, "good": 100},
+  "test": {"class 3": 300, "class 4": 150, "good": 76}
+ },
+ "generation": {"generators": 6, "steps": 12000, "images_per_generator": 400, "backgrounds": 50},
+ "design_stage_diagnosis": {
+  "note": "First-round split, DINOv2-L + logistic regression, 4 real class-3 images, no generated images. Class-3 recall with the defect visible and with it hidden.",
+  "share_brighter_at_top": {"class 3": 0.90, "good": 0.07},
+  "class3_recall": {"Whole image": [0.880, 0.780], "128 px crop": [0.860, 0.150]}
+ },
+ "timeline": [
+  ["r1", "Nov 4 to 8", "Round 1: whole images, segmentation and classification"],
+  ["r1", "Nov 8", "Diagnosis: on whole images, background shading alone tells the classes apart"],
+  ["r2", "Nov 8 to 10", "Round 2 design frozen: crops, paste controls, hypotheses, tests, report wording"],
+  ["r2", "Nov 11", "The same test set had been used once before for an internal evaluation; no setting was changed afterwards"],
+  ["r2", "Nov 12", "Plan for the final test fixed: 6 generators; test at n = 4, n = 10 reported without a verdict"],
+  ["r2", "Nov 13", "6 generators fine-tuned, 2,400 images generated on a cloud A100"],
+  ["stamp", "Nov 13, 22:21", "Plan, code, frozen settings pushed to a private repository (server time stamp)"],
+  ["test", "Nov 13 to 14", "Final test, run once, 22:36 to 00:24, on a laptop GPU (one stop, recorded fix, resumed)"]
+ ]
+}
