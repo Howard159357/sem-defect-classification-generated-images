@@ -148,7 +148,7 @@ The first-round design used whole images. I measured the background brightness a
   <img src="figures/fig05_why_crop_light.png" alt="A class-3 training image with the 128 px crop marked and a good training image, each with the mean grey level of every row; on the right, class-3 recall for four inputs: whole image with the defect visible 0.880 and hidden 0.780, 128 px crop with the defect visible 0.860 and hidden 0.150">
 </picture>
 
-<sub>Figure 5. Left: a class-3 and a good training image with the mean grey level of every row; the shading runs in opposite directions. White frame: the 128 px crop. Right: class-3 recall with the defect visible (solid) and hidden (faded). Images: Carinthia-S (CC BY 4.0), training images only.</sub>
+<sub>Figure 5. Left: a class-3 and a good training image with the mean grey level of every row; the shading runs in opposite directions. Yellow frame: the 128 px crop. Right: class-3 recall with the defect visible (grey) and with the background only (purple). Images: Carinthia-S (CC BY 4.0), training images only.</sub>
 
 <details>
 <summary>Values of the design-stage diagnosis</summary>

@@ -443,6 +443,7 @@ def fig05(t, mode, private):
     h = w * W / hgt * a.shape[0] / a.shape[1]
     yb = 0.29
     stroke = [pe.withStroke(linewidth=3, foreground="#0d1117")]
+    CROP = "#ffc53d"                                   # crop frame: readable on the grey SEM image in both themes
     for i, (im, name) in enumerate(((a, "Class 3"), (b, "Good"))):
         xl = 0.02 + i * 0.315
         ax = fig.add_axes([xl, yb, w, h])
@@ -450,14 +451,14 @@ def fig05(t, mode, private):
         frame(ax, t)
         ax.set_title(name, fontsize=10.5, color=t["fg"], pad=6, loc="left")
         if i == 0:
-            ax.add_patch(plt.Rectangle((x0, y0), 128, 128, fill=False, edgecolor="#ffffff", linewidth=1.8,
+            ax.add_patch(plt.Rectangle((x0, y0), 128, 128, fill=False, edgecolor=CROP, linewidth=2.2,
                                        path_effects=stroke))
-            ax.text(x0 + 64, y0 - 9, "128 px crop", ha="center", va="bottom", fontsize=9.8, color="#ffffff",
+            ax.text(x0 + 64, y0 - 9, "128 px crop", ha="center", va="bottom", fontsize=9.8, color=CROP,
                     fontweight="bold", path_effects=stroke)
         bg = np.concatenate([im[:, :100], im[:, -100:]], axis=1).mean(axis=1)       # background columns only
         bg = np.convolve(np.pad(bg[10:-10], 12, mode="edge"), np.ones(25) / 25, mode="valid")
         px = fig.add_axes([xl + w + 0.008, yb, 0.062, h])
-        px.plot(bg, np.arange(len(bg)) + 10, color=t["fg"], lw=1.6)
+        px.plot(bg, np.arange(len(bg)) + 10, color=t["accent"], lw=2.4, solid_capstyle="round")
         px.set_ylim(im.shape[0] - 1, 0)
         px.set_xlim(84, 112)
         px.set_xticks([90, 105])
@@ -465,23 +466,23 @@ def fig05(t, mode, private):
         px.tick_params(axis="x", length=0, labelsize=9, pad=2)
         px.xaxis.grid(True, color=t["grid"], lw=0.8)
         px.spines["left"].set_visible(False)
-        px.set_title("brightness", fontsize=9.5, color=t["fg2"], pad=6)
+        px.set_title("brightness", fontsize=9.5, color=t["accent"], pad=6, fontweight="bold")
         top, bot = im[:40].mean(), im[-40:].mean()
-        fig.text(xl, yb - 0.07, f"brighter at the {'top' if top > bot else 'bottom'}\n"
-                 f"(grey level {top:.0f} at the top, {bot:.0f} below)", fontsize=9.8, color=t["fg"], va="top",
-                 linespacing=1.35)
+        fig.text(xl, yb - 0.07, f"brighter at the {'top' if top > bot else 'bottom'}", fontsize=10.5,
+                 color=t["accent"], va="top", fontweight="bold")
+        fig.text(xl, yb - 0.125, f"grey level {top:.0f} at the top, {bot:.0f} below", fontsize=9.8, color=t["fg"],
+                 va="top")
     ax = fig.add_axes([0.79, yb, 0.185, h])
     ys, labels = [], []
     for gi, (grp, (vis, hid)) in enumerate(diagnosis.items()):
         base = 3.0 - gi * 2.6
-        ax.barh([base, base - 0.8], [vis, hid], height=0.62, color=t["neutral"], zorder=3)
-        ax.patches[-1].set_alpha(0.45)
+        ax.barh([base, base - 0.8], [vis, hid], height=0.62, color=[t["neutral"], t["accent"]], zorder=3)
         for y, v in ((base, vis), (base - 0.8, hid)):
             ax.text(v + 0.03, y, f"{v:.3f}", va="center", fontsize=10.5, color=t["fg"])
         ax.text(-0.02, base + 0.62, grp, fontsize=10.5, fontweight="bold", color=t["fg"], va="center", ha="right",
                 transform=ax.get_yaxis_transform())
         ys += [base, base - 0.8]
-        labels += ["defect visible", "defect hidden"]
+        labels += ["defect visible", "background only"]
     ax.set_yticks(ys, labels, fontsize=10)
     ax.tick_params(axis="y", length=0, labelcolor=t["fg"])
     ax.set_ylim(-1.0, 4.1)
