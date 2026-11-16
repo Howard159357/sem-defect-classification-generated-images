@@ -1,0 +1,56 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+type: software
+title: "With only 4 real images of a defect class, do generated images help the classifier? A pre-registered experiment on Carinthia-S"
+abstract: >-
+  A pre-registered experiment on Carinthia-S wafer SEM images with the public NVIDIA Cosmos AnomalyGen pipeline
+  (v1.0.0): does adding few-shot generated defect images raise a classifier's recall on a defect class with only
+  4 real images, and does it beat cut-and-paste controls?
+authors:
+  - family-names: Liu
+    given-names: Chuan-Hao
+    alias: Howard Liu
+    orcid: "https://orcid.org/0009-0000-5346-048X"
+repository-code: "https://github.com/Howard159357/sem-defect-classification-generated-images"
+url: "https://github.com/Howard159357/sem-defect-classification-generated-images"
+date-released: "2026-11-16"
+license:
+  - MIT
+  - CC-BY-4.0
+keywords:
+  - semiconductor
+  - SEM images
+  - automatic defect classification
+  - few-shot learning
+  - synthetic data
+  - diffusion models
+  - pre-registration
+references:
+  - type: dataset
+    title: "Carinthia-S dataset"
+    authors:
+      - family-names: Kofler
+        given-names: Corinna
+      - family-names: Hasić
+        given-names: Vahidin
+    year: 2025
+    publisher:
+      name: Zenodo
+    doi: 10.5281/zenodo.16895427
+    url: "https://doi.org/10.5281/zenodo.16895427"
+    license: CC-BY-4.0
+  - type: software
+    title: "Cosmos AnomalyGen (cdf-anomalygen)"
+    authors:
+      - name: "NVIDIA Corporation"
+    version: "1.0.0"
+    commit: fcad44cdf7d894f0ec371f32c910fa6afc434290
+    year: 2026
+    repository-code: "https://github.com/NVIDIA/cdf-anomalygen"
+    license: Apache-2.0
+  - type: article
+    title: "Cosmos World Foundation Model Platform for Physical AI"
+    authors:
+      - name: "NVIDIA"
+    year: 2025
+    url: "https://arxiv.org/abs/2501.03575"

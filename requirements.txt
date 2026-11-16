@@ -1,0 +1,4 @@
+# Versions the scripts were run with (Python 3.10). matplotlib >= 3.5 and Pillow >= 9.1 are needed.
+matplotlib==3.10.9
+numpy==2.2.6
+Pillow==12.2.0
